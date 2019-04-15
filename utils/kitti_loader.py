@@ -45,8 +45,6 @@ def iterate_data(data_dir, shuffle=False, aug=False, is_testset=False, batch_siz
     f_rgb.sort()
     f_lidar.sort()
     f_label.sort()
-    if is_testset:
-        f_label = ''
     
     data_tag = [name.split(os.sep)[-1].split('.')[-2] for name in f_rgb]
 
