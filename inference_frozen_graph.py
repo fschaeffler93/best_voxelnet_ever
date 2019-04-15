@@ -141,9 +141,6 @@ def main(_):
 
         sess = tf.Session(config=conf, graph=calib_graph)
 
-        writer = tf.summary.FileWriter('logs/frozen', sess.graph)
-        writer.close()
-
         for batch in iterate_data(test_dir, shuffle=False, aug=False, is_testset=True, batch_size=1, multi_gpu_sum=1):
 
             if args.vis:
