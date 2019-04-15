@@ -238,7 +238,7 @@ class RPN3D(object):
             output_feed.append(self.validate_summary)
         return session.run(output_feed, input_feed)
 
-    def predict_step(self, session, data, summary=False, vis=False, is_testset=False):
+    def predict_step(self, session, data, summary=False, vis=False):
         tag = data[0]
         label = data[1]
         vox_feature = data[2]
@@ -246,12 +246,6 @@ class RPN3D(object):
         vox_coordinate = data[4]
         img = data[5]
         lidar = data[6]
-        
-        if is_testset:
-            batch_gt_boxes3d = np.empty(len(img))
-        else:
-            if summary or vis:
-                batch_gt_boxes3d = label_to_gt_box3d(label, cls=self.cls, coordinate='lidar')
 
         print('predict', tag)
         input_feed = {}
@@ -295,16 +289,13 @@ class RPN3D(object):
         if summary:
             # only summary 1 in a batch
             cur_tag = tag[0]
-            P, Tr, R = load_calib( os.path.join( cfg.CALIB_DIR, cur_tag + '.txt' ) )
+            P, Tr, R = load_calib( os.path.join( cfg.DATA_DIR, 'testing', 'calib', cur_tag + '.txt' ) )
             
-            front_image = draw_lidar_box3d_on_image(img[0], ret_box3d[0], ret_score[0], batch_gt_boxes3d[0],
-                                                    P2=P, T_VELO_2_CAM=Tr, R_RECT_0=R, is_testset=is_testset)
+            front_image = draw_lidar_box3d_on_image(img[0], ret_box3d[0], ret_score[0], P2=P, T_VELO_2_CAM=Tr, R_RECT_0=R)
             
             bird_view = lidar_to_bird_view_img(lidar[0], factor=cfg.BV_LOG_FACTOR)
                 
-            bird_view = draw_lidar_box3d_on_birdview(bird_view, ret_box3d[0], ret_score[0], batch_gt_boxes3d[0],
-                                                     factor=cfg.BV_LOG_FACTOR, P2=P, T_VELO_2_CAM=Tr, R_RECT_0=R,
-                                                     is_testset=is_testset)
+            bird_view = draw_lidar_box3d_on_birdview(bird_view, ret_box3d[0], ret_score[0], factor=cfg.BV_LOG_FACTOR, T_VELO_2_CAM=Tr, R_RECT_0=R)
             
             heatmap = colorize(probs[0, ...], cfg.BV_LOG_FACTOR)
         
@@ -319,16 +310,13 @@ class RPN3D(object):
             front_images, bird_views, heatmaps = [], [], []
             for i in range(len(img)):
                 cur_tag = tag[i]
-                P, Tr, R = load_calib( os.path.join( cfg.CALIB_DIR, cur_tag + '.txt' ) )
+                P, Tr, R = load_calib( os.path.join( cfg.DATA_DIR, 'testing', 'calib', cur_tag + '.txt' ) )
                 
-                front_image = draw_lidar_box3d_on_image(img[i], ret_box3d[i], ret_score[i], batch_gt_boxes3d[i],
-                                                        P2=P, T_VELO_2_CAM=Tr, R_RECT_0=R, is_testset=is_testset)
+                front_image = draw_lidar_box3d_on_image(img[i], ret_box3d[i], ret_score[i], P2=P, T_VELO_2_CAM=Tr, R_RECT_0=R)
                                                  
                 bird_view = lidar_to_bird_view_img(lidar[i], factor=cfg.BV_LOG_FACTOR)
                                                  
-                bird_view = draw_lidar_box3d_on_birdview(bird_view, ret_box3d[i], ret_score[i], batch_gt_boxes3d[i],
-                                                         factor=cfg.BV_LOG_FACTOR, P2=P, T_VELO_2_CAM=Tr, R_RECT_0=R,
-                                                         is_testset=is_testset)
+                bird_view = draw_lidar_box3d_on_birdview(bird_view, ret_box3d[i], ret_score[i], factor=cfg.BV_LOG_FACTOR, T_VELO_2_CAM=Tr, R_RECT_0=R)
                 
                 heatmap = colorize(probs[i, ...], cfg.BV_LOG_FACTOR)
                 
@@ -340,65 +328,6 @@ class RPN3D(object):
 
         return tag, ret_box3d_score
 
-
-    def save_frozen_graph(self, session, output_path):
-        """
-        saves a frozen graph.pb file in the given path
-        :param session: current tensorflow session
-        :param output_path: path to the output frozen_graph.pb
-        :return: ---
-        """
-        output_graph = tf.graph_util.convert_variables_to_constants(
-                session,
-                tf.get_default_graph().as_graph_def(),
-                self.get_output_nodes_names()
-                )
-
-        with tf.gfile.GFile(output_path, "wb") as f:
-            f.write(output_graph.SerializeToString())
-
-        print("%d ops in the final graph." % len(output_graph.node))
-        print("\n\n frozen graph saved to {}".format(output_path))
-
-    def get_output_nodes(self):
-        """
-        :return: list of all output nodes
-        """
-        ret = [
-                self.prob_output, self.delta_output,
-                self.box2d_ind_after_nms,
-                self.predict_summary
-        ]
-
-        return ret
-
-    def get_output_nodes_names(self):
-        """
-        :return: list of the names of all output nodes (string)
-        """
-        nodes = self.get_output_nodes()
-        ret = []
-        for nd in nodes:
-            ret.append(nd.name.split(":")[0])
-
-        print(ret)
-        return ret
-        
-
-    def get_input_nodes(self):
-        """
-        :return: list of all input nodes
-        """
-        ret = [
-                self.boxes2d, self.boxes2d_scores,
-                self.rgb, self.bv, self.bv_heatmap
-        ]
-        for idx in range(len(self.avail_gpus)):
-            ret.append(self.vox_feature[idx])
-            ret.append(self.vox_number[idx])
-            ret.append(self.vox_coordinate[idx])
-
-        return ret
 
 def average_gradients(tower_grads):
     # ref:
@@ -424,8 +353,6 @@ def average_gradients(tower_grads):
         grad_and_var = grad
         average_grads.append(grad_and_var)
     return average_grads
-
-
 
 
 if __name__ == '__main__':
