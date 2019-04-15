@@ -374,7 +374,7 @@ def lidar_to_bird_view_img(lidar, factor=1):
 
 
 def draw_lidar_box3d_on_image(img, boxes3d, scores, gt_boxes3d=np.array([]),
-                              color=(0, 255, 255), gt_color=(255, 0, 255), thickness=1, P2 = None, T_VELO_2_CAM=None, R_RECT_0=None, is_testset=False):
+                              color=(0, 255, 255), gt_color=(255, 0, 255), thickness=1, P2 = None, T_VELO_2_CAM=None, R_RECT_0=None):
     # Input:
     #   img: (h, w, 3)
     #   boxes3d (N, 7) [x, y, z, h, w, l, r]
@@ -382,10 +382,8 @@ def draw_lidar_box3d_on_image(img, boxes3d, scores, gt_boxes3d=np.array([]),
     #   gt_boxes3d (N, 7) [x, y, z, h, w, l, r]
     img = img.copy()
     projections = lidar_box3d_to_camera_box(boxes3d, cal_projection=True, P2=P2, T_VELO_2_CAM=T_VELO_2_CAM, R_RECT_0=R_RECT_0)
-    if not is_testset:
-        gt_projections = lidar_box3d_to_camera_box(gt_boxes3d, cal_projection=True, P2=P2, T_VELO_2_CAM=T_VELO_2_CAM, R_RECT_0=R_RECT_0)
-    else:
-        gt_projections = []
+    gt_projections = lidar_box3d_to_camera_box(gt_boxes3d, cal_projection=True, P2=P2, T_VELO_2_CAM=T_VELO_2_CAM, R_RECT_0=R_RECT_0)
+
     # draw projections
     for qs in projections:
         for k in range(0, 4):
@@ -420,7 +418,7 @@ def draw_lidar_box3d_on_image(img, boxes3d, scores, gt_boxes3d=np.array([]),
 
 
 def draw_lidar_box3d_on_birdview(birdview, boxes3d, scores, gt_boxes3d=np.array([]),
-                                 color=(0, 255, 255), gt_color=(255, 0, 255), thickness=1, factor=1, P2 = None, T_VELO_2_CAM=None, R_RECT_0=None, is_testset=False):
+                                 color=(0, 255, 255), gt_color=(255, 0, 255), thickness=1, factor=1, T_VELO_2_CAM=None, R_RECT_0=None):
     # Input:
     #   birdview: (h, w, 3)
     #   boxes3d (N, 7) [x, y, z, h, w, l, r]
@@ -428,10 +426,8 @@ def draw_lidar_box3d_on_birdview(birdview, boxes3d, scores, gt_boxes3d=np.array(
     #   gt_boxes3d (N, 7) [x, y, z, h, w, l, r]
     img = birdview.copy()
     corner_boxes3d = center_to_corner_box3d(boxes3d, coordinate='lidar', T_VELO_2_CAM=T_VELO_2_CAM, R_RECT_0=R_RECT_0)
-    if not is_testset:
-        corner_gt_boxes3d = center_to_corner_box3d(gt_boxes3d, coordinate='lidar', T_VELO_2_CAM=T_VELO_2_CAM, R_RECT_0=R_RECT_0)
-    else:
-        corner_gt_boxes3d = []
+    corner_gt_boxes3d = center_to_corner_box3d(gt_boxes3d, coordinate='lidar', T_VELO_2_CAM=T_VELO_2_CAM, R_RECT_0=R_RECT_0)
+
     # draw gt
     for box in corner_gt_boxes3d:
         x0, y0 = lidar_to_bird_view(*box[0, 0:2], factor=factor)
