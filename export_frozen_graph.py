@@ -16,10 +16,14 @@ from utils.kitti_loader import iterate_data, sample_test_data
 
 
 parser = argparse.ArgumentParser(description='testing')
-parser.add_argument('-n', '--tag', type=str, nargs='?', default='pre_trained_car/frozen.pb',
+parser.add_argument('-n', '--tag', type=str, nargs='?', default='pre_trained_car',
                     help='set log tag')
 parser.add_argument('-b', '--single-batch-size', type=int, nargs='?', default=1,
                     help='set batch size for each gpu')
+parser.add_argument('-o', '--output-path', type=str, nargs='?',
+                    default='./predictions', help='results output dir')
+parser.add_argument('-v', '--vis', type=bool, nargs='?', default=False,
+                        help='set the flag to True if dumping visualizations')
 args = parser.parse_args()
 
 
@@ -30,7 +34,6 @@ save_model_dir = os.path.join('.', 'save_model', args.tag)
 
 def main(_):   
     with tf.Graph().as_default():
-
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=cfg.GPU_MEMORY_FRACTION,
                             visible_device_list=cfg.GPU_AVAILABLE,
                             allow_growth=True)
@@ -43,6 +46,7 @@ def main(_):
             allow_soft_placement=True,
         )
 
+        # just one run to initialize all the variables
         with tf.Session(config=config) as sess:
             model = RPN3D(
                 cls=cfg.DETECT_OBJ,
@@ -54,12 +58,14 @@ def main(_):
                 print("Reading model parameters from %s" % save_model_dir)
                 model.saver.restore(
                     sess, tf.train.latest_checkpoint(save_model_dir))
-
-            # initialize all variables
-            sess.run(tf.global_variables_initializer())
-            # export the frozen_graph.pb
-            model.save_frozen_graph(sess, save_model_dir)
             
+            
+            for batch in iterate_data(test_dir, shuffle=False, aug=False, is_testset=True, batch_size=args.single_batch_size * cfg.GPU_USE_COUNT, multi_gpu_sum=cfg.GPU_USE_COUNT):
+                tags, results = model.predict_step(sess, batch, summary=False, vis=False)
+                break
+
+            model.save_frozen_graph(sess, save_model_dir+"/frozen.pb")
+
 
 if __name__ == '__main__':
     tf.app.run(main)
