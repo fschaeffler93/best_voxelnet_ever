@@ -19,7 +19,6 @@ cfg = __C
 
 # for dataset dir
 __C.DATA_DIR = osp.abspath(osp.join(os.sep, 'data', 'object'))
-__C.CALIB_DIR = osp.abspath(osp.join(os.sep, 'data', 'object', 'testing', 'calib'))
 
 
 # for gpu allocation
