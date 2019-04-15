@@ -68,9 +68,9 @@ def main(_):
             for batch in iterate_data(test_dir, shuffle=False, aug=False, is_testset=True, batch_size=args.single_batch_size * cfg.GPU_USE_COUNT, multi_gpu_sum=cfg.GPU_USE_COUNT):
 
                 if args.vis:
-                    tags, results, front_images, bird_views, heatmaps = model.predict_step(sess, batch, summary=False, vis=True, is_testset=True)
+                    tags, results, front_images, bird_views, heatmaps = model.predict_step(sess, batch, summary=False, vis=True)
                 else:
-                    tags, results = model.predict_step(sess, batch, summary=False, vis=False, is_testset=True)
+                    tags, results = model.predict_step(sess, batch, summary=False, vis=False)
                 
                 for tag, result in zip(tags, results):
                     of_path = os.path.join(args.output_path, 'data', tag + '.txt')
