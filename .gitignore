@@ -3,4 +3,5 @@ log/*
 predictions/*
 build/*
 *.pyd
+*.bak
 
