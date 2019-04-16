@@ -15,7 +15,7 @@ from utils.preprocess import process_pointcloud
 
 class Processor:
     def __init__(self, data_tag, f_rgb, f_lidar, f_label, data_dir, aug, is_testset):
-        self.data_tag=data_tag
+        self.data_tag = data_tag
         self.f_rgb = f_rgb
         self.f_lidar = f_lidar
         self.f_label = f_label
@@ -38,6 +38,8 @@ class Processor:
             ret = [tag, rgb, raw_lidar, voxel, labels]
         return ret
 
+
+
 def iterate_data(data_dir, shuffle=False, aug=False, is_testset=False, batch_size=1, multi_gpu_sum=1):
     f_rgb = glob.glob(os.path.join(data_dir, 'image_2', '*.png'))
     f_lidar = glob.glob(os.path.join(data_dir, 'velodyne', '*.bin'))
@@ -47,19 +49,20 @@ def iterate_data(data_dir, shuffle=False, aug=False, is_testset=False, batch_siz
     f_label.sort()
     
     data_tag = [name.split(os.sep)[-1].split('.')[-2] for name in f_rgb]
-
+    
     assert len(data_tag) != 0, "dataset folder is not correct"
     assert len(data_tag) == len(f_rgb) == len(f_lidar) , "dataset folder is not correct"
     
     nums = len(f_rgb)
+    
     indices = list(range(nums))
     if shuffle:
         np.random.shuffle(indices)
-
+    
     num_batches = int(math.floor( nums / float(batch_size) ))
-
+    
     proc=Processor(data_tag, f_rgb, f_lidar, f_label, data_dir, aug, is_testset)
-
+    
     for batch_idx in range(num_batches):
         start_idx = batch_idx * batch_size
         excerpts = indices[start_idx:start_idx + batch_size]
@@ -67,13 +70,13 @@ def iterate_data(data_dir, shuffle=False, aug=False, is_testset=False, batch_siz
         rets = []
         for excerpt in excerpts:
             rets.append(proc(excerpt))
-
+        
         tag = [ ret[0] for ret in rets ]
         rgb = [ ret[1] for ret in rets ]
         raw_lidar = [ ret[2] for ret in rets ]
         voxel = [ ret[3] for ret in rets ]
         labels = [ ret[4] for ret in rets ]
-
+        
         vox_feature, vox_number, vox_coordinate = [], [], []
         single_batch_size = int(batch_size / multi_gpu_sum)
         for idx in range(multi_gpu_sum):
@@ -81,7 +84,7 @@ def iterate_data(data_dir, shuffle=False, aug=False, is_testset=False, batch_siz
             vox_feature.append(per_vox_feature)
             vox_number.append(per_vox_number)
             vox_coordinate.append(per_vox_coordinate)
-
+        
         ret = (
                np.array(tag),
                np.array(labels),
@@ -91,7 +94,7 @@ def iterate_data(data_dir, shuffle=False, aug=False, is_testset=False, batch_siz
                np.array(rgb),
                np.array(raw_lidar)
                )
-
+        
         yield ret
 
 
@@ -106,50 +109,94 @@ def sample_test_data(data_dir, batch_size=1, multi_gpu_sum=1):
     
     data_tag = [name.split(os.sep)[-1].split('.')[-2] for name in f_rgb]
     
-    assert(len(data_tag) == len(f_rgb) == len(f_lidar)), "dataset folder is not correct"
+    assert len(data_tag) != 0, "dataset folder is not correct"
+    assert len(data_tag) == len(f_rgb) == len(f_lidar) , "dataset folder is not correct"
     
     nums = len(f_rgb)
     
     indices = list(range(nums))
     np.random.shuffle(indices)
-
-    num_batches = int(math.floor( nums / float(batch_size) ))
-
+    
     proc_val=Processor(data_tag, f_rgb, f_lidar, f_label, data_dir, False, False)
     
-    for batch_idx in range(num_batches):
-        start_idx = batch_idx * batch_size
-        excerpts = indices[start_idx:start_idx + batch_size]
+    excerpts = indices[0:1]
     
-        rets = []
-        for excerpt in excerpts:
-            rets.append(proc_val(excerpt))
+    rets = []
+    for excerpt in excerpts:
+        rets.append(proc_val(excerpt))
     
-        tag = [ ret[0] for ret in rets ]
-        rgb = [ ret[1] for ret in rets ]
-        raw_lidar = [ ret[2] for ret in rets ]
-        voxel = [ ret[3] for ret in rets ]
-        labels = [ ret[4] for ret in rets ]
-
-        vox_feature, vox_number, vox_coordinate = [], [], []
-        single_batch_size = int(batch_size / multi_gpu_sum)
-        for idx in range(multi_gpu_sum):
-            _, per_vox_feature, per_vox_number, per_vox_coordinate = build_input(voxel[idx * single_batch_size:(idx + 1) * single_batch_size])
-            vox_feature.append(per_vox_feature)
-            vox_number.append(per_vox_number)
-            vox_coordinate.append(per_vox_coordinate)
-
-        ret = (
-               np.array(tag),
-               np.array(labels),
-               np.array(vox_feature),
-               np.array(vox_number),
-               np.array(vox_coordinate),
-               np.array(rgb),
-               np.array(raw_lidar)
-               )
-
+    tag = [ ret[0] for ret in rets ]
+    rgb = [ ret[1] for ret in rets ]
+    raw_lidar = [ ret[2] for ret in rets ]
+    voxel = [ ret[3] for ret in rets ]
+    labels = [ ret[4] for ret in rets ]
+    
+    vox_feature, vox_number, vox_coordinate = [], [], []
+    single_batch_size = int(batch_size / multi_gpu_sum)
+    for idx in range(multi_gpu_sum):
+        _, per_vox_feature, per_vox_number, per_vox_coordinate = build_input(voxel[idx * single_batch_size:(idx + 1) * single_batch_size])
+        vox_feature.append(per_vox_feature)
+        vox_number.append(per_vox_number)
+        vox_coordinate.append(per_vox_coordinate)
+    
+    ret = (
+           np.array(tag),
+           np.array(labels),
+           np.array(vox_feature),
+           np.array(vox_number),
+           np.array(vox_coordinate),
+           np.array(rgb),
+           np.array(raw_lidar)
+           )
+    
     return ret
+
+
+
+def sample_single_data(data_dir, data_tag):
+    f_rgb = glob.glob(os.path.join(data_dir, 'image_2', data_tag + '.png'))
+    f_lidar = glob.glob(os.path.join(data_dir, 'velodyne', data_tag + '.bin'))
+    f_label = glob.glob(os.path.join(data_dir, 'label_2', data_tag + '.txt'))
+    
+    data_tag = [data_tag]
+    
+    assert len(data_tag) != 0, "dataset folder is not correct"
+    assert len(data_tag) == len(f_rgb) == len(f_lidar) , "dataset folder is not correct"
+    
+    indices = list(range(1))
+    
+    proc_dat=Processor(data_tag, f_rgb, f_lidar, f_label, data_dir, False, True)
+    
+    excerpts = indices[0:1]
+    
+    rets = []
+    for excerpt in excerpts:
+        rets.append(proc_dat(excerpt))
+    
+    tag = [ ret[0] for ret in rets ]
+    rgb = [ ret[1] for ret in rets ]
+    raw_lidar = [ ret[2] for ret in rets ]
+    voxel = [ ret[3] for ret in rets ]
+    labels = [ ret[4] for ret in rets ]
+    
+    vox_feature, vox_number, vox_coordinate = [], [], []
+    _, per_vox_feature, per_vox_number, per_vox_coordinate = build_input(voxel[0:1])
+    vox_feature.append(per_vox_feature)
+    vox_number.append(per_vox_number)
+    vox_coordinate.append(per_vox_coordinate)
+    
+    ret = (
+           np.array(tag),
+           np.array(labels),
+           np.array(vox_feature),
+           np.array(vox_number),
+           np.array(vox_coordinate),
+           np.array(rgb),
+           np.array(raw_lidar)
+           )
+    
+    return ret
+
 
 
 def build_input(voxel_dict_list):
@@ -168,6 +215,7 @@ def build_input(voxel_dict_list):
     number = np.concatenate(number_list)
     coordinate = np.concatenate(coordinate_list)
     return batch_size, feature, number, coordinate
+
 
 
 if __name__ == '__main__':
