@@ -59,9 +59,13 @@ python train.py
 ```
 python test.py
 ```
-See the default parameter settings in `train.py` and `test.py`. Set Parameters in command line if other settings are needed.
+See the default parameter settings in `train.py` and `test.py`. Set parameters in command line if other settings are needed.
 ```
 python train.py --lr 0.01
 
 python test.py --vis False
+```
+Predict single sample by running `test_single.py`. Set data tag with command line parameter `-t` or `--data-tag` (default `000000`).
+```
+python test_single.py -t 000001
 ```
