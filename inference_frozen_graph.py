@@ -6,12 +6,17 @@ import argparse
 import os
 import time
 import tensorflow as tf
+from datetime import datetime
 
 from config import cfg
 from model import RPN3D
 
 from utils import *
 from utils.kitti_loader import iterate_data, sample_test_data
+
+import platform
+if platform.system() == "Linux":
+    from tensorflow.contrib import tensorrt as trt
 
 
 
@@ -66,6 +71,7 @@ def predict_frozen(graph, session, data, summary=False, vis=True):
             input_feed[graph.get_tensor_by_name('prefix/gpu_0/coordinate:0')] = vox_coordinate[idx]
 
         output_feed = [graph.get_tensor_by_name('prefix/concat_101:0'), graph.get_tensor_by_name('prefix/concat_100:0')]
+        start = datetime.now()
         probs, deltas = session.run(output_feed, input_feed)
         
         # BOTTLENECK
@@ -89,6 +95,7 @@ def predict_frozen(graph, session, data, summary=False, vis=True):
                     {graph.get_tensor_by_name('prefix/Placeholder_3:0'): boxes2d,
                      graph.get_tensor_by_name('prefix/Placeholder_4:0'): tmp_scores})
 
+            print("\n Elapsed time [seconds]: ", (datetime.now() - start).total_seconds())
             tmp_boxes3d = tmp_boxes3d[ind, ...]
             tmp_scores = tmp_scores[ind]
             ret_box3d.append(tmp_boxes3d)
@@ -137,12 +144,12 @@ def main(_):
             allow_soft_placement=True,
         )
 
-        calib_graph = load_graph(save_model_dir + "/frozen.pb")
+        #calib_graph = load_graph(save_model_dir + "/frozen.pb")
+        calib_graph = load_graph(save_model_dir + "/newFrozenModel_TRT_.pb")
 
         sess = tf.Session(config=conf, graph=calib_graph)
 
         for batch in iterate_data(test_dir, shuffle=False, aug=False, is_testset=True, batch_size=1, multi_gpu_sum=1):
-
             if args.vis:
                 tags, results, front_images, bird_views, heatmaps = predict_frozen(calib_graph, sess, batch, summary=False, vis=True)
             else:

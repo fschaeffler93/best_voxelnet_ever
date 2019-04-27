@@ -32,6 +32,9 @@ dataset_dir = cfg.DATA_DIR
 test_dir = os.path.join(dataset_dir, 'testing')
 save_model_dir = os.path.join('.', 'save_model', args.tag)
     
+alloc_space_TensorRT = 6
+ppgmf = (6 - alloc_space_TensorRT)/6
+max_workspace_size_bytes = alloc_space_TensorRT*1000000000
 
 def main(_):   
     with tf.Graph().as_default():
@@ -48,32 +51,37 @@ def main(_):
             allow_soft_placement=True,
         )
 
-        with tf.Session(config=config) as sess:
+        with tf.Session(config=conf) as sess:
             model = RPN3D(
                 cls=cfg.DETECT_OBJ,
                 single_batch_size=args.single_batch_size,
                 avail_gpus=cfg.GPU_AVAILABLE.split(',')
             )        
 
-        nd_names = model.get_output_node_names()
+        nd_names = model.get_output_nodes_names()
         node_list = []
         # we ned the names of the tensor, not of the ops
         for nd in nd_names:
             node_list.append(nd + ':0')
 
-        calib_graph = load_graph(save_model_dir + "/frozen.pb")
+        print(node_list)
+        print("\n\n\n")
+
         with gfile.FastGFile(save_model_dir + "/frozen.pb", 'rb') as f:
             graph_def = tf.GraphDef()
             graph_def.ParseFromString(f.read())
             trt_graph = trt.create_inference_graph(input_graph_def=graph_def,outputs=node_list, 
-                                                   max_batch_size=32,
+                                                   max_batch_size=2,
                                                    max_workspace_size_bytes=max_workspace_size_bytes,
-                                                   minimum_segment_size=1,
-                                                   precision_mode="FP16")
+                                                   minimum_segment_size=6,
+                                                   precision_mode="FP32")
             path_new_frozen_pb = save_model_dir + "/newFrozenModel_TRT_.pb"
             with gfile.FastGFile(path_new_frozen_pb, 'wb') as fp:
                 fp.write(trt_graph.SerializeToString())
                 print("TRT graph written to path ", path_new_frozen_pb)
+            with tf.Session() as sess:
+                writer = tf.summary.FileWriter('logs', sess.graph)
+                writer.close()
 
 
 if __name__ == '__main__':
