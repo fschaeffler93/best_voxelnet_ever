@@ -354,8 +354,8 @@ class RPN3D(object):
         """
         ret = [
                 self.prob_output, self.delta_output,
-                self.box2d_ind_after_nms,
-                self.predict_summary
+                self.box2d_ind_after_nms
+                #self.predict_summary
         ]
 
         return ret
