@@ -25,6 +25,7 @@ parser.add_argument('-o', '--output-path', type=str, nargs='?',
                     default='./predictions', help='results output dir')
 parser.add_argument('-v', '--vis', type=bool, nargs='?', default=False,
                         help='set the flag to True if dumping visualizations')
+parser.add_argument('-p', '--precision', default='FP32', help='precision for tensorRT')
 args = parser.parse_args()
 
 
@@ -74,8 +75,8 @@ def main(_):
                                                    max_batch_size=2,
                                                    max_workspace_size_bytes=max_workspace_size_bytes,
                                                    minimum_segment_size=6,
-                                                   precision_mode="FP32")
-            path_new_frozen_pb = save_model_dir + "/newFrozenModel_TRT_.pb"
+                                                   precision_mode=args.precision)
+            path_new_frozen_pb = save_model_dir + "/newFrozenModel_TRT_{}.pb".format(args.precision)
             with gfile.FastGFile(path_new_frozen_pb, 'wb') as fp:
                 fp.write(trt_graph.SerializeToString())
                 print("TRT graph written to path ", path_new_frozen_pb)

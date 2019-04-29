@@ -21,6 +21,7 @@ if platform.system() == "Linux":
 
 
 parser = argparse.ArgumentParser(description='testing')
+parser.add_argument('-g', '--graph', type=str, required=True, help="path to graph")
 parser.add_argument('-n', '--tag', type=str, nargs='?', default='pre_trained_car',
                     help='set log tag')
 parser.add_argument('-b', '--single-batch-size', type=int, nargs='?', default=1,
@@ -34,7 +35,6 @@ args = parser.parse_args()
 
 dataset_dir = cfg.DATA_DIR
 test_dir = os.path.join(dataset_dir, 'testing')
-save_model_dir = os.path.join('.', 'save_model', args.tag)
     
 os.makedirs(args.output_path, exist_ok=True)
 os.makedirs(os.path.join(args.output_path, 'data'), exist_ok=True)
@@ -144,8 +144,7 @@ def main(_):
             allow_soft_placement=True,
         )
 
-        #calib_graph = load_graph(save_model_dir + "/frozen.pb")
-        calib_graph = load_graph(save_model_dir + "/newFrozenModel_TRT_.pb")
+        calib_graph = load_graph(args.graph)
 
         sess = tf.Session(config=conf, graph=calib_graph)
 
