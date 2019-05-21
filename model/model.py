@@ -27,8 +27,7 @@ class RPN3D(object):
         # hyper parameters and status
         self.cls = cls
         self.single_batch_size = single_batch_size
-        self.learning_rate = tf.Variable(
-            float(learning_rate), trainable=False, dtype=tf.float32)
+        self.learning_rate = tf.Variable(float(learning_rate), trainable=False, dtype=tf.float32)
         self.global_step = tf.Variable(1, trainable=False)
         self.epoch = tf.Variable(0, trainable=False)
         self.epoch_add_op = self.epoch.assign(self.epoch + 1)
@@ -64,10 +63,8 @@ class RPN3D(object):
                 with tf.device('/gpu:{}'.format(dev)), tf.name_scope('gpu_{}'.format(dev)):
                     # must use name scope here since we do not want to create new variables
                     # graph
-                    feature = FeatureNet(
-                        training=self.is_train, batch_size=self.single_batch_size)
-                    rpn = MiddleAndRPN(
-                        input=feature.outputs, alpha=self.alpha, beta=self.beta, training=self.is_train)
+                    feature = FeatureNet(training=self.is_train, batch_size=self.single_batch_size)
+                    rpn = MiddleAndRPN(input=feature.outputs, alpha=self.alpha, beta=self.beta, training=self.is_train)
                     tf.get_variable_scope().reuse_variables()
                     # input
                     self.vox_feature.append(feature.feature)
@@ -76,8 +73,7 @@ class RPN3D(object):
                     self.targets.append(rpn.targets)
                     self.pos_equal_one.append(rpn.pos_equal_one)
                     self.pos_equal_one_sum.append(rpn.pos_equal_one_sum)
-                    self.pos_equal_one_for_reg.append(
-                        rpn.pos_equal_one_for_reg)
+                    self.pos_equal_one_for_reg.append(rpn.pos_equal_one_for_reg)
                     self.neg_equal_one.append(rpn.neg_equal_one)
                     self.neg_equal_one_sum.append(rpn.neg_equal_one_sum)
                     # output
@@ -95,8 +91,7 @@ class RPN3D(object):
                     self.cls_neg_loss = rpn.cls_neg_loss_rec
                     self.params = tf.trainable_variables()
                     gradients = tf.gradients(self.loss, self.params)
-                    clipped_gradients, gradient_norm = tf.clip_by_global_norm(
-                        gradients, max_gradient_norm)
+                    clipped_gradients, gradient_norm = tf.clip_by_global_norm(gradients, max_gradient_norm)
 
                     self.delta_output.append(delta_output)
                     self.prob_output.append(prob_output)
@@ -110,8 +105,7 @@ class RPN3D(object):
         # self.xxxloss is only the loss for the lowest tower
         with tf.device('/gpu:{}'.format(self.avail_gpus[0])):
             self.grads = average_gradients(self.tower_grads)
-            self.update = [self.opt.apply_gradients(
-                zip(self.grads, self.params), global_step=self.global_step)]
+            self.update = [self.opt.apply_gradients(zip(self.grads, self.params), global_step=self.global_step)]
             self.gradient_norm = tf.group(*self.gradient_norm)
 
         self.update.extend(self.extra_update_ops)
@@ -122,12 +116,9 @@ class RPN3D(object):
 
         self.anchors = cal_anchors()
         # for predict and image summary
-        self.rgb = tf.placeholder(
-            tf.uint8, [None, cfg.IMAGE_HEIGHT, cfg.IMAGE_WIDTH, 3])
-        self.bv = tf.placeholder(tf.uint8, [
-                                 None, cfg.BV_LOG_FACTOR * cfg.INPUT_HEIGHT, cfg.BV_LOG_FACTOR * cfg.INPUT_WIDTH, 3])
-        self.bv_heatmap = tf.placeholder(tf.uint8, [
-            None, cfg.BV_LOG_FACTOR * cfg.FEATURE_HEIGHT, cfg.BV_LOG_FACTOR * cfg.FEATURE_WIDTH, 3])
+        self.rgb = tf.placeholder(tf.uint8, [None, cfg.IMAGE_HEIGHT, cfg.IMAGE_WIDTH, 3])
+        self.bv = tf.placeholder(tf.uint8, [None, cfg.BV_LOG_FACTOR * cfg.INPUT_HEIGHT, cfg.BV_LOG_FACTOR * cfg.INPUT_WIDTH, 3])
+        self.bv_heatmap = tf.placeholder(tf.uint8, [None, cfg.BV_LOG_FACTOR * cfg.FEATURE_HEIGHT, cfg.BV_LOG_FACTOR * cfg.FEATURE_WIDTH, 3])
         self.boxes2d = tf.placeholder(tf.float32, [None, 4])
         self.boxes2d_scores = tf.placeholder(tf.float32, [None])
 
@@ -137,8 +128,7 @@ class RPN3D(object):
                 self.boxes2d, self.boxes2d_scores, max_output_size=cfg.RPN_NMS_POST_TOPK, iou_threshold=cfg.RPN_NMS_THRESH)
 
         # summary and saver
-        self.saver = tf.train.Saver(write_version=tf.train.SaverDef.V2,
-                                    max_to_keep=10, pad_step_number=True, keep_checkpoint_every_n_hours=1.0)
+        self.saver = tf.train.Saver(write_version=tf.train.SaverDef.V2, max_to_keep=10, pad_step_number=True, keep_checkpoint_every_n_hours=1.0)
 
         self.train_summary = tf.summary.merge([
             tf.summary.scalar('train/loss', self.loss),
