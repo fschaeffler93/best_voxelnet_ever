@@ -7,7 +7,6 @@ import os
 import time
 import tensorflow as tf
 import sys
-from itertools import count
 
 from config import cfg
 from model import RPN3D
@@ -31,8 +30,8 @@ parser.add_argument('-al', '--alpha', type=float, nargs='?', default=1.0,
                     help='set alpha in los function')
 parser.add_argument('-be', '--beta', type=float, nargs='?', default=10.0,
                     help='set beta in los function')
-parser.add_argument('-o', '--output-path', type=str, nargs='?',
-                    default='./predictions', help='results output dir')
+parser.add_argument('-o', '--output-path', type=str, nargs='?', default='predictions',
+                    help='results output dir')
 args = parser.parse_args()
 
 
@@ -40,27 +39,29 @@ dataset_dir = cfg.DATA_DIR
 train_dir = os.path.join(dataset_dir, 'training')
 val_dir = os.path.join(dataset_dir, 'validation')
 log_dir = os.path.join('.', 'log', args.tag)
+res_dir = os.path.join('.', args.output_path)
 save_model_dir = os.path.join('.', 'save_model', args.tag)
 
 os.makedirs(log_dir, exist_ok=True)
+os.makedirs(res_dir, exist_ok=True)
 os.makedirs(save_model_dir, exist_ok=True)
 
 def main(_):
     
     with tf.Graph().as_default():
-        global save_model_dir
+    
         start_epoch = 0
         global_counter = 0
 
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=cfg.GPU_MEMORY_FRACTION,
-                                    visible_device_list=cfg.GPU_AVAILABLE,
-                                    allow_growth=True)
+        gpu_options = tf.GPUOptions(
+            per_process_gpu_memory_fraction=cfg.GPU_MEMORY_FRACTION,
+            visible_device_list=cfg.GPU_AVAILABLE,
+            allow_growth=True
+        )
 
         config = tf.ConfigProto(
             gpu_options=gpu_options,
-            device_count={
-                "GPU": cfg.GPU_USE_COUNT,
-            },
+            device_count={"GPU": cfg.GPU_USE_COUNT,},
             allow_soft_placement=True,
         )
 
@@ -74,11 +75,11 @@ def main(_):
                 beta=args.beta,
                 avail_gpus=cfg.GPU_AVAILABLE.split(',')
             )
+            
             # param init/restore
             if tf.train.get_checkpoint_state(save_model_dir):
                 print("Reading model parameters from %s" % save_model_dir)
-                model.saver.restore(
-                    sess, tf.train.latest_checkpoint(save_model_dir))
+                model.saver.restore(sess, tf.train.latest_checkpoint(save_model_dir))
                 start_epoch = model.epoch.eval() + 1
                 global_counter = model.global_step.eval() + 1
             else:
@@ -108,14 +109,13 @@ def main(_):
                         is_summary = False
                     
                     start_time = time.time()
-                    ret = model.train_step( sess, batch, train=True, summary = is_summary )
+                    ret = model.train_step(sess, batch, train=True, summary = is_summary)
                     forward_time = time.time() - start_time
                     batch_time = time.time() - batch_time
-
                     
-                    print('train: {} @ epoch:{}/{} loss: {:.4f} reg_loss: {:.4f} cls_loss: {:.4f} cls_pos_loss: {:.4f} cls_neg_loss: {:.4f} forward time: {:.4f} batch time: {:.4f}'.format(counter,epoch, args.max_epoch, ret[0], ret[1], ret[2], ret[3], ret[4], forward_time, batch_time))
-                    with open('log/train.txt', 'a') as f:
-                        f.write( 'train: {} @ epoch:{}/{} loss: {:.4f} reg_loss: {:.4f} cls_loss: {:.4f} cls_pos_loss: {:.4f} cls_neg_loss: {:.4f} forward time: {:.4f} batch time: {:.4f} \n'.format(counter, epoch, args.max_epoch, ret[0], ret[1], ret[2], ret[3], ret[4], forward_time, batch_time) )
+                    print('train: {} @ epoch:{}/{} loss: {:.4f} reg_loss: {:.4f} cls_loss: {:.4f} cls_pos_loss: {:.4f} cls_neg_loss: {:.4f} forward time: {:.4f} batch time: {:.4f}'.format(counter, epoch + 1, args.max_epoch, ret[0], ret[1], ret[2], ret[3], ret[4], forward_time, batch_time))
+                    with open(os.path.join('log', 'train.txt'), 'a') as f:
+                        f.write('train: {} @ epoch:{}/{} loss: {:.4f} reg_loss: {:.4f} cls_loss: {:.4f} cls_pos_loss: {:.4f} cls_neg_loss: {:.4f} forward time: {:.4f} batch time: {:.4f} \n'.format(counter, epoch + 1, args.max_epoch, ret[0], ret[1], ret[2], ret[3], ret[4], forward_time, batch_time))
                     
                     if counter % summary_interval == 0:
                         print("summary_interval now")
@@ -140,32 +140,26 @@ def main(_):
                 model.saver.save(sess, os.path.join(save_model_dir, 'checkpoint'), global_step=model.global_step)
         
                 # dump test data every 10 epochs
-                if ( epoch + 1 ) % 10 == 0:
-                    # create output folder
-                    os.makedirs(os.path.join(args.output_path, str(epoch)), exist_ok=True)
-                    os.makedirs(os.path.join(args.output_path, str(epoch), 'data'), exist_ok=True)
+                if (epoch + 1) % 10 == 0:
+                    os.makedirs(os.path.join(res_dir, str(epoch)), exist_ok=True)
+                    os.makedirs(os.path.join(res_dir, str(epoch), 'data'), exist_ok=True)
                     
                     for batch in iterate_data(val_dir, shuffle=False, aug=False, is_testset=False, batch_size=args.single_batch_size * cfg.GPU_USE_COUNT, multi_gpu_sum=cfg.GPU_USE_COUNT):
                         
                         tags, results = model.predict_step(sess, batch, summary=False, vis=False)
                                 
                         for tag, result in zip(tags, results):
-                            of_path = os.path.join(args.output_path, str(epoch), 'data', tag + '.txt')
+                            of_path = os.path.join(res_dir, str(epoch), 'data', tag + '.txt')
                             with open(of_path, 'w+') as f:
                                 labels = box3d_to_label([result[:, 1:8]], [result[:, 0]], [result[:, -1]], coordinate='lidar')[0]
                                 for line in labels:
                                     f.write(line)
                                 print('write out {} objects to {}'.format(len(labels), tag))
 
-                        
-                        
 
-            print('train done. total epoch:{} iter:{}'.format(
-                epoch, model.global_step.eval()))
-                
+
             # finally save model
-            model.saver.save(sess, os.path.join(
-                save_model_dir, 'checkpoint'), global_step=model.global_step)
+            model.saver.save(sess, os.path.join(save_model_dir, 'checkpoint'), global_step=model.global_step)
 
 
 if __name__ == '__main__':
