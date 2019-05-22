@@ -74,7 +74,7 @@ def main(_):
                 avail_gpus=cfg.GPU_AVAILABLE.split(',')
             )
             
-            writer = tf.summary.FileWriter('logs', sess.graph)
+            writer = tf.summary.FileWriter('tensorboard_logs', sess.graph)
             writer.close()
         
 
