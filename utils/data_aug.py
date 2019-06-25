@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # -*- coding:UTF-8 -*-
 
-# File Name : data_aug.py
-# Purpose :
-# Creation Date : 21-12-2017
-# Last Modified : Fri 19 Jan 2018 01:06:35 PM CST
-# Created By : Jeasine Ma [jeasinema[at]gmail[dot]com]
-
 import numpy as np
 import cv2
 import os
@@ -16,28 +10,22 @@ import glob
 from utils.utils import *
 from utils.preprocess import *
 
-object_dir = './data/object'
+object_dir = os.path.join('.', 'data', 'object')
 
 
 def aug_data(tag, object_dir):
     np.random.seed()
-    rgb = cv2.resize(cv2.imread(os.path.join(object_dir,
-                                             'image_2', tag + '.png')), (cfg.IMAGE_WIDTH, cfg.IMAGE_HEIGHT))
-    #rgb = cv2.imread( os.path.join(object_dir,'image_2', tag + '.png')  )
-    lidar = np.fromfile(os.path.join(object_dir,
-                                     'velodyne', tag + '.bin'), dtype=np.float32).reshape(-1, 4)
-    label = np.array([line for line in open(os.path.join(
-        object_dir, 'label_2', tag + '.txt'), 'r').readlines()])  # (N')
+    rgb = cv2.resize(cv2.imread(os.path.join(object_dir, 'image_2', tag + '.png')), (cfg.IMAGE_WIDTH, cfg.IMAGE_HEIGHT))
+    lidar = np.fromfile(os.path.join(object_dir, 'velodyne', tag + '.bin'), dtype=np.float32).reshape(-1, 4)
+    label = np.array([line for line in open(os.path.join(object_dir, 'label_2', tag + '.txt'), 'r').readlines()])  # (N')
     cls = np.array([line.split()[0] for line in label])  # (N')
-    gt_box3d = label_to_gt_box3d(np.array(label)[np.newaxis, :], cls='', coordinate='camera')[
-        0]  # (N', 7) x, y, z, h, w, l, r
+    gt_box3d = label_to_gt_box3d(np.array(label)[np.newaxis, :], cls='', coordinate='camera')[0]  # (N', 7) x, y, z, h, w, l, r
 
     choice = np.random.randint(0, 10)
     if choice >= 7:
         # disable this augmention here. current implementation will decrease the performances
         lidar_center_gt_box3d = camera_to_lidar_box(gt_box3d)
-        lidar_corner_gt_box3d = center_to_corner_box3d(
-            lidar_center_gt_box3d, coordinate='lidar')
+        lidar_corner_gt_box3d = center_to_corner_box3d(lidar_center_gt_box3d, coordinate='lidar')
         for idx in range(len(lidar_corner_gt_box3d)):
             # TODO: precisely gather the point
             is_collision = True
@@ -48,13 +36,11 @@ def aug_data(tag, object_dir):
                 t_y = np.random.normal()
                 t_z = np.random.normal()
                 # check collision
-                tmp = box_transform(
-                    lidar_center_gt_box3d[[idx]], t_x, t_y, t_z, t_rz, 'lidar')
+                tmp = box_transform(lidar_center_gt_box3d[[idx]], t_x, t_y, t_z, t_rz, 'lidar')
                 is_collision = False
                 for idy in range(idx):
                     x1, y1, w1, l1, r1 = tmp[0][[0, 1, 4, 5, 6]]
-                    x2, y2, w2, l2, r2 = lidar_center_gt_box3d[idy][[
-                        0, 1, 4, 5, 6]]
+                    x2, y2, w2, l2, r2 = lidar_center_gt_box3d[idy][[0, 1, 4, 5, 6]]
                     iou = cal_iou2d(np.array([x1, y1, w1, l1, r1], dtype=np.float32),
                                     np.array([x2, y2, w2, l2, r2], dtype=np.float32))
                     if iou > 0:
@@ -69,22 +55,15 @@ def aug_data(tag, object_dir):
                 maxx = np.max(box_corner[:, 0])
                 maxy = np.max(box_corner[:, 1])
                 maxz = np.max(box_corner[:, 2])
-                bound_x = np.logical_and(
-                    lidar[:, 0] >= minx, lidar[:, 0] <= maxx)
-                bound_y = np.logical_and(
-                    lidar[:, 1] >= miny, lidar[:, 1] <= maxy)
-                bound_z = np.logical_and(
-                    lidar[:, 2] >= minz, lidar[:, 2] <= maxz)
-                bound_box = np.logical_and(
-                    np.logical_and(bound_x, bound_y), bound_z)
-                lidar[bound_box, 0:3] = point_transform(
-                    lidar[bound_box, 0:3], t_x, t_y, t_z, rz=t_rz)
-                lidar_center_gt_box3d[idx] = box_transform(
-                    lidar_center_gt_box3d[[idx]], t_x, t_y, t_z, t_rz, 'lidar')
+                bound_x = np.logical_and(lidar[:, 0] >= minx, lidar[:, 0] <= maxx)
+                bound_y = np.logical_and(lidar[:, 1] >= miny, lidar[:, 1] <= maxy)
+                bound_z = np.logical_and(lidar[:, 2] >= minz, lidar[:, 2] <= maxz)
+                bound_box = np.logical_and(np.logical_and(bound_x, bound_y), bound_z)
+                lidar[bound_box, 0:3] = point_transform(lidar[bound_box, 0:3], t_x, t_y, t_z, rz=t_rz)
+                lidar_center_gt_box3d[idx] = box_transform(lidar_center_gt_box3d[[idx]], t_x, t_y, t_z, t_rz, 'lidar')
 
         gt_box3d = lidar_to_camera_box(lidar_center_gt_box3d)
-        newtag = 'aug_{}_1_{}'.format(
-            tag, np.random.randint(1, 1024))
+        newtag = 'aug_{}_1_{}'.format(tag, np.random.randint(1, 1024))
     elif choice < 7 and choice >= 4:
         # global rotation
         angle = np.random.uniform(-np.pi / 4, np.pi / 4)
