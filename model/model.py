@@ -18,6 +18,8 @@ class RPN3D(object):
 
     def __init__(self,
                  cls='Car',
+                 decrease=False,
+                 minimize=False,
                  single_batch_size=1,  # batch_size_per_gpu
                  learning_rate=0.001,
                  max_gradient_norm=5.0,
@@ -26,6 +28,8 @@ class RPN3D(object):
                  avail_gpus=['0']):
         # hyper parameters and status
         self.cls = cls
+        self.decrease = decrease
+        self.minimize = minimize
         self.single_batch_size = single_batch_size
         self.learning_rate = tf.Variable(float(learning_rate), trainable=False, dtype=tf.float32)
         self.global_step = tf.Variable(1, trainable=False)
@@ -64,7 +68,7 @@ class RPN3D(object):
                     # must use name scope here since we do not want to create new variables
                     # graph
                     feature = FeatureNet(training=self.is_train, batch_size=self.single_batch_size)
-                    rpn = MiddleAndRPN(input=feature.outputs, alpha=self.alpha, beta=self.beta, training=self.is_train)
+                    rpn = MiddleAndRPN(input=feature.outputs, alpha=self.alpha, beta=self.beta, training=self.is_train, decrease=self.decrease, minimize=self.minimize)
                     tf.get_variable_scope().reuse_variables()
                     # input
                     self.vox_feature.append(feature.feature)
