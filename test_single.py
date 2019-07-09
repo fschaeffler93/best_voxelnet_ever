@@ -18,6 +18,10 @@ from utils.kitti_loader import iterate_data, sample_test_data
 parser = argparse.ArgumentParser(description='testing')
 parser.add_argument('-n', '--tag', type=str, nargs='?', default='pre_trained_car',
                     help='set log tag')
+parser.add_argument('-d', '--decrease', type=bool, nargs='?', default=False,
+                    help='set the flag to True if decrease model')
+parser.add_argument('-m', '--minimize', type=bool, nargs='?', default=False,
+                    help='set the flag to True if minimize model')
 parser.add_argument('-t', '--data-tag', type=str, nargs='?', default='000000',
                     help='set data tag')
 parser.add_argument('-o', '--output-path', type=str, nargs='?',default='./predictions',
@@ -56,6 +60,8 @@ def main(_):
         with tf.Session(config=config) as sess:
             model = RPN3D(
                 cls=cfg.DETECT_OBJ,
+                decrease=args.decrease,
+                minimize=args.minimize,
                 single_batch_size=1,
                 avail_gpus=cfg.GPU_AVAILABLE.split(',')
             )

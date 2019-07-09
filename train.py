@@ -22,6 +22,10 @@ parser.add_argument('-i', '--max-epoch', type=int, nargs='?', default=1,
                     help='max epoch')
 parser.add_argument('-n', '--tag', type=str, nargs='?', default='default',
                     help='set log tag')
+parser.add_argument('-d', '--decrease', type=bool, nargs='?', default=False,
+                    help='set the flag to True if decrease model')
+parser.add_argument('-m', '--minimize', type=bool, nargs='?', default=False,
+                    help='set the flag to True if minimize model')
 parser.add_argument('-b', '--single-batch-size', type=int, nargs='?', default=1,
                     help='set batch size for each gpu')
 parser.add_argument('-l', '--lr', type=float, nargs='?', default=0.001,
@@ -68,6 +72,8 @@ def main(_):
         with tf.Session(config=config) as sess:
             model = RPN3D(
                 cls=cfg.DETECT_OBJ,
+                decrease=args.decrease,
+                minimize=args.minimize,
                 single_batch_size=args.single_batch_size,
                 learning_rate=args.lr,
                 max_gradient_norm=5.0,
